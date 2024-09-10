@@ -1,0 +1,22 @@
+# Binaries for programs and projects
+/target/
+
+# If you have generated documentation, you can ignore that too.
+/docs/
+
+/Cargo.lock
+# Ignore Cargo.lock for libraries, but you should commit it for binaries.
+
+/*.log
+node_modules/
+
+# Ignore IDE/editor specific files
+.idea/
+.vscode/
+*.swp
+
+# Ignore MacOS-specific files
+.DS_Store
+
+# Ignore environment variable files (if any)
+.env
