@@ -1,81 +1,69 @@
-use std::net::Ipv4Addr;
-
-use actix_web::{web, App, HttpServer, Responder, HttpResponse};
+use async_graphql::{Object, Schema, Context, SimpleObject, EmptySubscription};
+use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
+use actix_web::{web, App, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
-use utoipa::{ToSchema, OpenApi};
-use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 
-#[derive(OpenApi)]
-#[openapi(
-    paths(ride_request, ride_offer),
-    components(schemas(RideRequest, RideOffer)),
-    tags(
-        (name = "ride-sharing", description = "Ride sharing service API")
-    )
-)]
-struct ApiDoc;
-
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(SimpleObject, Serialize, Deserialize)]
 struct RideRequest {
     pickup_location: String,
     dropoff_location: String,
     user_id: String,
 }
 
-#[derive(Serialize, Deserialize, ToSchema)]
-struct RideOffer {
-    driver_id: String,
-    available_seats: u32,
+#[derive(Default)]
+struct Query;
+
+#[Object]
+impl Query {
+    async fn ride_request(&self, ctx: &Context<'_>, user_id: String) -> Option<RideRequest> {
+        // Dummy data - replace this with database lookup or other logic
+        Some(RideRequest {
+            pickup_location: "Pickup".to_string(),
+            dropoff_location: "Dropoff".to_string(),
+            user_id,
+        })
+    }
 }
 
-// API endpoint to handle ride requests
-#[utoipa::path(
-    post,
-    path = "/api/ride-request",
-    request_body = RideRequest,
-    responses(
-        (status = 200, description = "Ride request received", body = String)
-    )
-)]
-async fn ride_request(req: web::Json<RideRequest>) -> impl Responder {
-    HttpResponse::Ok().json(format!(
-        "Ride request from {} to {} received!",
-        req.pickup_location, req.dropoff_location
-    ))
+#[derive(Default)]
+struct Mutation;
+
+#[Object]
+impl Mutation {
+    async fn create_ride_request(
+        &self,
+        ctx: &Context<'_>,
+        pickup_location: String,
+        dropoff_location: String,
+        user_id: String,
+    ) -> RideRequest {
+        // Here you'd add logic to store this request in a database or other storage.
+        RideRequest {
+            pickup_location,
+            dropoff_location,
+            user_id,
+        }
+    }
 }
 
-// API endpoint to handle ride offers
-#[utoipa::path(
-    post,
-    path = "/api/ride-offer",
-    request_body = RideOffer,
-    responses(
-        (status = 200, description = "Ride offer received", body = String)
-    )
-)]
-async fn ride_offer(offer: web::Json<RideOffer>) -> impl Responder {
-    HttpResponse::Ok().json(format!(
-        "Ride offer with {} available seats received!",
-        offer.available_seats
-    ))
+async fn graphql_handler(
+    schema: web::Data<Schema<Query, Mutation, EmptySubscription>>,  // Include EmptySubscription here
+    req: GraphQLRequest
+) -> GraphQLResponse {
+    schema.execute(req.into_inner()).await.into()
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let api_doc = ApiDoc::openapi();
+    let schema = Schema::build(Query::default(), Mutation::default(), EmptySubscription) // Include EmptySubscription here
+        .finish();
 
     HttpServer::new(move || {
         App::new()
-            .service(actix_web::web::scope("/api")
-                .route("/ride-request", web::post().to(ride_request))
-                .route("/ride-offer", web::post().to(ride_offer))
-            )
-            .service(
-                utoipa_swagger_ui::SwaggerUi::new("/swagger-ui/{_:.*}")
-                    .url("/api-doc/openapi.json", api_doc.clone())
-            )
+            .app_data(web::Data::new(schema.clone()))
+            .service(web::resource("/graphql").route(web::post().to(graphql_handler)))
     })
-    .bind((Ipv4Addr::UNSPECIFIED, 8080))?
+    .bind("127.0.0.1:8080")?
     .run()
     .await
 }
