@@ -1,20 +1,11 @@
 use actix_web::{web, App, HttpServer};
-use async_graphql::{EmptySubscription, Schema};
-use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
+use crate::graphql::handler::graphql_handler;
 
 mod graphql;
 
-async fn graphql_handler(
-    schema: web::Data<Schema<graphql::Query, graphql::Mutation, EmptySubscription>>,
-    req: GraphQLRequest
-) -> GraphQLResponse {
-    schema.execute(req.into_inner()).await.into()
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let schema = Schema::build(graphql::Query::default(), graphql::Mutation::default(), EmptySubscription)
-        .finish();
+    let schema = graphql::build_schema();
 
     HttpServer::new(move || {
         App::new()
