@@ -1,53 +1,11 @@
-use async_graphql::{Object, Schema, Context, SimpleObject, EmptySubscription};
+use actix_web::{web, App, HttpServer};
+use async_graphql::{EmptySubscription, Schema};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
-use actix_web::{web, App, HttpServer, Responder};
-use serde::{Deserialize, Serialize};
 
-#[derive(SimpleObject, Serialize, Deserialize)]
-struct RideRequest {
-    pickup_location: String,
-    dropoff_location: String,
-    user_id: String,
-}
-
-#[derive(Default)]
-struct Query;
-
-#[Object]
-impl Query {
-    async fn ride_request(&self, ctx: &Context<'_>, user_id: String) -> Option<RideRequest> {
-        // Dummy data - replace this with database lookup or other logic
-        Some(RideRequest {
-            pickup_location: "Pickup".to_string(),
-            dropoff_location: "Dropoff".to_string(),
-            user_id,
-        })
-    }
-}
-
-#[derive(Default)]
-struct Mutation;
-
-#[Object]
-impl Mutation {
-    async fn create_ride_request(
-        &self,
-        ctx: &Context<'_>,
-        pickup_location: String,
-        dropoff_location: String,
-        user_id: String,
-    ) -> RideRequest {
-        // Here you'd add logic to store this request in a database or other storage.
-        RideRequest {
-            pickup_location,
-            dropoff_location,
-            user_id,
-        }
-    }
-}
+mod graphql;
 
 async fn graphql_handler(
-    schema: web::Data<Schema<Query, Mutation, EmptySubscription>>,  // Include EmptySubscription here
+    schema: web::Data<Schema<graphql::Query, graphql::Mutation, EmptySubscription>>,
     req: GraphQLRequest
 ) -> GraphQLResponse {
     schema.execute(req.into_inner()).await.into()
@@ -55,7 +13,7 @@ async fn graphql_handler(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let schema = Schema::build(Query::default(), Mutation::default(), EmptySubscription) // Include EmptySubscription here
+    let schema = Schema::build(graphql::Query::default(), graphql::Mutation::default(), EmptySubscription)
         .finish();
 
     HttpServer::new(move || {
