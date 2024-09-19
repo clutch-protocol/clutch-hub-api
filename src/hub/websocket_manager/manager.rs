@@ -1,31 +1,37 @@
 use super::connection::start_connection_loop;
 use super::types::{JSONRPCRequest, JSONRPCResponse};
+use futures_util::stream::SplitSink;
+use futures_util::SinkExt;
 use serde_json;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::net::TcpStream;
+use tokio::sync::{oneshot, Mutex};
 use tokio::time::{timeout, Duration};
+use tokio_tungstenite::tungstenite::protocol::Message;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use uuid::Uuid;
 
 pub struct WebSocketManager {
-    tx: mpsc::Sender<String>,
+    ws_sink: Arc<Mutex<Option<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>>,
     pending_requests: Arc<Mutex<HashMap<String, oneshot::Sender<String>>>>,
 }
 
 impl WebSocketManager {
     /// Creates a new WebSocketManager and starts the connection task.
     pub fn new(url: String) -> Arc<Self> {
-        let (tx, rx) = mpsc::channel(100);
+        let ws_sink = Arc::new(Mutex::new(None));
         let pending_requests = Arc::new(Mutex::new(HashMap::new()));
 
         // Start the background connection task
+        let ws_sink_clone = ws_sink.clone();
         let pending_requests_clone = pending_requests.clone();
         tokio::spawn(async move {
-            start_connection_loop(url, rx, pending_requests_clone).await;
+            start_connection_loop(url, ws_sink_clone, pending_requests_clone).await;
         });
 
         Arc::new(WebSocketManager {
-            tx,
+            ws_sink,
             pending_requests,
         })
     }
@@ -37,13 +43,6 @@ impl WebSocketManager {
         params: serde_json::Value,
     ) -> Result<serde_json::Value, String> {
         let id = Uuid::new_v4().to_string();
-        let (resp_tx, resp_rx) = oneshot::channel();
-
-        {
-            let mut pending = self.pending_requests.lock().await;
-            pending.insert(id.clone(), resp_tx);
-        }
-
         let request = JSONRPCRequest {
             jsonrpc: "2.0".to_string(),
             method: method.to_string(),
@@ -53,48 +52,61 @@ impl WebSocketManager {
 
         let request_json = serde_json::to_string(&request).map_err(|e| e.to_string())?;
 
-        // Send the request
-        if let Err(e) = self.tx.send(request_json).await {
-            // Sending failed, remove the pending request
-            let mut pending = self.pending_requests.lock().await;
-            pending.remove(&id);
-            return Err(format!("Failed to send request: {}", e));
-        }
+        // Check if the connection is established
+        let mut ws_sink_lock = self.ws_sink.lock().await;
+        if let Some(ws_sink) = ws_sink_lock.as_mut() {
+            let (resp_tx, resp_rx) = oneshot::channel();
 
-        // Wait for response with timeout
-        let response_result = timeout(Duration::from_secs(10), resp_rx).await;
-
-        match response_result {
-            Ok(Ok(response_json)) => {
-                if response_json.is_empty() {
-                    // Connection lost, and no response received
-                    return Err("Connection lost before receiving response".to_string());
-                }
-
-                // Parse the response
-                let response: JSONRPCResponse =
-                    serde_json::from_str(&response_json).map_err(|e| e.to_string())?;
-                if response.id != id {
-                    return Err("Mismatched response ID".to_string());
-                }
-                if let Some(error) = response.error {
-                    Err(error.message)
-                } else if let Some(result) = response.result {
-                    Ok(result)
-                } else {
-                    Err("No result or error in response".to_string())
-                }
+            {
+                let mut pending = self.pending_requests.lock().await;
+                pending.insert(id.clone(), resp_tx);
             }
-            Ok(Err(_)) => {
-                // Sender was dropped
-                Err("Failed to receive response".to_string())
-            }
-            Err(_) => {
-                // Timeout occurred
+
+            // Send the request
+            if let Err(e) = ws_sink.send(Message::Text(request_json)).await {
+                // Sending failed, remove the pending request
                 let mut pending = self.pending_requests.lock().await;
                 pending.remove(&id);
-                Err("Request timed out".to_string())
+                return Err(format!("Failed to send request: {}", e));
             }
+
+            // Wait for response with timeout
+            let response_result = timeout(Duration::from_secs(10), resp_rx).await;
+
+            match response_result {
+                Ok(Ok(response_json)) => {
+                    if response_json.is_empty() {
+                        // Connection lost, and no response received
+                        return Err("Connection lost before receiving response".to_string());
+                    }
+
+                    // Parse the response
+                    let response: JSONRPCResponse =
+                        serde_json::from_str(&response_json).map_err(|e| e.to_string())?;
+                    if response.id != id {
+                        return Err("Mismatched response ID".to_string());
+                    }
+                    if let Some(error) = response.error {
+                        Err(error.message)
+                    } else if let Some(result) = response.result {
+                        Ok(result)
+                    } else {
+                        Err("No result or error in response".to_string())
+                    }
+                }
+                Ok(Err(_)) => {
+                    // Sender was dropped
+                    Err("Failed to receive response".to_string())
+                }
+                Err(_) => {
+                    // Timeout occurred
+                    let mut pending = self.pending_requests.lock().await;
+                    pending.remove(&id);
+                    Err("Request timed out".to_string())
+                }
+            }
+        } else {
+            Err("WebSocket connection not established".to_string())
         }
     }
 }
