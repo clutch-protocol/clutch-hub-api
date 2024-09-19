@@ -23,13 +23,16 @@ impl WebSocketManager {
     }
 
     pub async fn connect(&self) {
-        if let Ok((ws_stream, _)) = connect_async(&self.url).await {
-            let (ws_sink, _) = ws_stream.split();
-            let mut ws_sink_lock = self.ws_sink.lock().unwrap();
-            *ws_sink_lock = Some(ws_sink);
-            info!("Connected to WebSocket server at {}", self.url);
-        } else {
-            error!("Failed to connect to WebSocket server at {}", self.url);
+        match connect_async(&self.url).await {
+            Ok((ws_stream, _)) => {
+                let (ws_sink, _) = ws_stream.split();
+                let mut ws_sink_lock = self.ws_sink.lock().unwrap();
+                *ws_sink_lock = Some(ws_sink);
+                info!("Connected to WebSocket server at {}", self.url);
+            }
+            Err(e) => {
+                error!("Failed to connect to WebSocket server at {}: {}", self.url, e);
+            }
         }
     }
 
@@ -38,9 +41,11 @@ impl WebSocketManager {
         if let Some(ws_sink) = &mut *ws_sink_lock {
             if let Err(e) = ws_sink.send(Message::Text(message.to_string())).await {
                 error!("Failed to send message: {}", e);
+            } else {
+                info!("Message sent: {}", message);
             }
         } else {
-            error!("WebSocket connection not established");
+            error!("WebSocket connection not established. Cannot send message.");
         }
     }
 }
