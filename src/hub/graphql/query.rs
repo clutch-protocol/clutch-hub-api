@@ -1,5 +1,5 @@
 use async_graphql::{Context, Object};
-use crate::graphql::types::RideRequest;
+use crate::hub::graphql::types::RideRequest;
 
 #[derive(Default)]
 pub struct Query;

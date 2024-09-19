@@ -1,9 +1,9 @@
 
 use std::sync::Arc;
 use actix_web::{web, App, HttpServer};
-use crate::graphql::handler::graphql_handler;
-use crate::graphql::build_schema;
-use crate::websocket_manager::WebSocketManager;
+use crate::hub::graphql::handler::graphql_handler;
+use crate::hub::graphql::build_schema;
+use crate::hub::websocket_manager::WebSocketManager;
 
 pub async fn connect_websocket() -> Arc<WebSocketManager> {
     let ws_manager = Arc::new(WebSocketManager::new("wss://your-blockchain-node-url".to_string()));

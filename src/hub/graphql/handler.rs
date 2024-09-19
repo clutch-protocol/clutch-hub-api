@@ -1,7 +1,7 @@
 use actix_web::web;
 use async_graphql::{Schema, EmptySubscription};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
-use crate::graphql::{Query, Mutation};
+use crate::hub::graphql::{Query, Mutation};
 
 pub async fn graphql_handler(
     schema: web::Data<Schema<Query, Mutation, EmptySubscription>>,
