@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::hub::{graphql::types::RideRequest, websocket_manager::WebSocketManager};
 use async_graphql::{Context, Object};
-use tracing::{error, info};
+use serde_json::json;
+use tracing::error;
 
 #[derive(Default)]
 pub struct Query;
@@ -14,20 +15,24 @@ impl Query {
             .data::<Arc<WebSocketManager>>()
             .expect("WebSocketManager not found in context");
 
-        if let Err(e) = ws_manager.send_message("Your message here").await {
-            error!("Failed to send message: {}", e);
-        }
+        let params = json!({ "user_id": user_id });
 
-        // Optionally, receive messages
-        if let Some(response) = ws_manager.receive_message().await {
-            info!("Received response: {}", response);
+        match ws_manager.send_request("ride_request", params).await {
+            Ok(result) => {
+                // Parse the result into RideRequest
+                match serde_json::from_value::<RideRequest>(result) {
+                    Ok(ride_request) => Some(ride_request),
+                    Err(e) => {
+                        error!("Failed to parse RideRequest: {}", e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Failed to send request: {}", e);
+                None
+            }
         }
-
-        Some(RideRequest {
-            pickup_location: "Pickup".to_string(),
-            dropoff_location: "Dropoff".to_string(),
-            user_id,
-        })
     }
 
     pub async fn ride_offer(&self, _ctx: &Context<'_>, user_id: String) -> Option<RideRequest> {

@@ -24,3 +24,4 @@ chrono = "0.4.38"
 axum = "0.7.5"
 prometheus-client = "0.22.3"
 lazy_static = "1.5.0"
+uuid = { version = "1.10.0", features = ["v4"] }
