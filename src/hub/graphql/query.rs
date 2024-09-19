@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::hub::{graphql::types::RideRequest, websocket_manager::WebSocketManager};
+use crate::hub::{graphql::types::RideRequest, clutch_node_client::ClutchNodeClient};
 use async_graphql::{Context, Object};
 use serde_json::json;
 use tracing::error;
@@ -12,7 +12,7 @@ pub struct Query;
 impl Query {
     pub async fn ride_request(&self, ctx: &Context<'_>, user_id: String) -> Option<RideRequest> {
         let ws_manager = ctx
-            .data::<Arc<WebSocketManager>>()
+            .data::<Arc<ClutchNodeClient>>()
             .expect("WebSocketManager not found in context");
     
         let params = json!({ "user_id": user_id });

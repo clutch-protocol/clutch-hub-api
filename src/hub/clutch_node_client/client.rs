@@ -12,12 +12,12 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use uuid::Uuid;
 
-pub struct WebSocketManager {
+pub struct ClutchNodeClient {
     ws_sink: Arc<Mutex<Option<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>>,
     pending_requests: Arc<Mutex<HashMap<String, oneshot::Sender<String>>>>,
 }
 
-impl WebSocketManager {
+impl ClutchNodeClient {
     /// Creates a new WebSocketManager and starts the connection task.
     pub fn new(url: String) -> Arc<Self> {
         let ws_sink = Arc::new(Mutex::new(None));
@@ -30,7 +30,7 @@ impl WebSocketManager {
             start_connection_loop(url, ws_sink_clone, pending_requests_clone).await;
         });
 
-        Arc::new(WebSocketManager {
+        Arc::new(ClutchNodeClient {
             ws_sink,
             pending_requests,
         })

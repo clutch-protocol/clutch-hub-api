@@ -1,15 +1,15 @@
 use crate::hub::graphql::build_schema;
 use crate::hub::graphql::handler::graphql_handler;
-use crate::hub::websocket_manager::WebSocketManager;
+use crate::hub::clutch_node_client::ClutchNodeClient;
 use actix_web::{web, App, HttpServer};
 use std::sync::Arc;
 
-pub async fn connect_websocket(wss_url: &str) -> Arc<WebSocketManager> {
+pub async fn connect_websocket(wss_url: &str) -> Arc<ClutchNodeClient> {
     let url = wss_url.to_string();
-    WebSocketManager::new(url)
+    ClutchNodeClient::new(url)
 }
 
-pub async fn run_graphql_server(ws_manager: Arc<WebSocketManager>) -> std::io::Result<()> {
+pub async fn run_graphql_server(ws_manager: Arc<ClutchNodeClient>) -> std::io::Result<()> {
     let schema = build_schema(ws_manager.clone());
 
     HttpServer::new(move || {

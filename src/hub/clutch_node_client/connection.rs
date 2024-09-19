@@ -1,3 +1,5 @@
+// src/hub/clutch_node_client/connection.rs
+
 use super::types::JSONRPCResponse;
 use futures_util::stream::SplitSink;
 use futures_util::StreamExt;
@@ -19,7 +21,7 @@ pub async fn start_connection_loop(
     loop {
         match connect_async(&url).await {
             Ok((ws_stream, _)) => {
-                info!("Connected to WebSocket server at {}", url);
+                info!("Connected to clutch-node at {}", url);
                 let (sink, mut stream) = ws_stream.split();
 
                 // Update the shared ws_sink
@@ -28,44 +30,47 @@ pub async fn start_connection_loop(
                     *ws_sink_lock = Some(sink);
                 }
 
-                // Start a task to handle incoming messages
+                // Process incoming messages until the connection is closed
                 let pending_requests_clone = pending_requests.clone();
                 let ws_sink_clone = ws_sink.clone();
-                tokio::spawn(async move {
-                    while let Some(msg) = stream.next().await {
-                        match msg {
-                            Ok(Message::Text(text)) => {
-                                handle_incoming_message(text, pending_requests_clone.clone()).await;
-                            }
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!("WebSocket error: {}", e);
-                                break;
-                            }
+
+                while let Some(msg) = stream.next().await {
+                    match msg {
+                        Ok(Message::Text(text)) => {
+                            handle_incoming_message(text, pending_requests_clone.clone()).await;
+                        }
+                        Ok(_) => {
+                            // Handle other message types if needed
+                        }
+                        Err(e) => {
+                            error!("WebSocket error: {}", e);
+                            break;
                         }
                     }
+                }
 
-                    // Connection lost, clear ws_sink
-                    {
-                        let mut ws_sink_lock = ws_sink_clone.lock().await;
-                        *ws_sink_lock = None;
-                    }
+                // Connection lost, clear ws_sink
+                {
+                    let mut ws_sink_lock = ws_sink_clone.lock().await;
+                    *ws_sink_lock = None;
+                }
 
-                    // Notify pending requests
-                    let mut pending = pending_requests_clone.lock().await;
-                    for (_, sender) in pending.drain() {
-                        let _ = sender.send("".to_string());
-                    }
-                });
+                // Notify pending requests about the disconnection
+                let mut pending = pending_requests.lock().await;
+                for (_, sender) in pending.drain() {
+                    let _ = sender.send("".to_string());
+                }
+
+                info!("Connection to clutch-node lost");
             }
             Err(e) => {
-                error!("Failed to connect to WebSocket server at {}: {}", url, e);
+                error!("Failed to connect to clutch-node at {}: {}", url, e);
             }
         }
 
         // Wait before attempting to reconnect
         let retry_seconds = 5;
-        info!("Reconnecting in {} seconds...", retry_seconds);
+        info!("Reconnecting to clutch-node in {} seconds...", retry_seconds);
         tokio::time::sleep(Duration::from_secs(retry_seconds)).await;
     }
 }
