@@ -6,10 +6,10 @@ use tracing::info;
 #[derive(Debug, Deserialize, Clone)]
 pub struct AppConfig {
     pub log_level: String,   
-    pub serve_metric_enabled: bool,
     pub serve_metric_addr: String,
     pub seq_url: String,
     pub seq_api_key: String,
+    pub clutch_node_wss_url: String,
 }
 
 impl AppConfig {
