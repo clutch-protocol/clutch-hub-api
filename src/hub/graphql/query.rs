@@ -17,7 +17,7 @@ impl Query {
     
         let params = json!({ "user_id": user_id });
     
-        match ws_manager.send_request("ride_request", params).await {
+        match ws_manager.send_request("add_transaction", params).await {
             Ok(result) => {
                 // Parse the result into RideRequest
                 match serde_json::from_value::<RideRequest>(result) {
