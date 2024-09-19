@@ -4,12 +4,9 @@ use crate::hub::websocket_manager::WebSocketManager;
 use actix_web::{web, App, HttpServer};
 use std::sync::Arc;
 
-pub async fn connect_websocket(wss_url:&str) -> Arc<WebSocketManager> {
+pub async fn connect_websocket(wss_url: &str) -> Arc<WebSocketManager> {
     let url = wss_url.to_string();
-    let ws_manager = Arc::new(WebSocketManager::new(
-        url
-    ));
-    ws_manager
+    WebSocketManager::new(url)
 }
 
 pub async fn run_graphql_server(ws_manager: Arc<WebSocketManager>) -> std::io::Result<()> {
