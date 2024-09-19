@@ -14,9 +14,9 @@ impl Query {
         let ws_manager = ctx
             .data::<Arc<WebSocketManager>>()
             .expect("WebSocketManager not found in context");
-
+    
         let params = json!({ "user_id": user_id });
-
+    
         match ws_manager.send_request("ride_request", params).await {
             Ok(result) => {
                 // Parse the result into RideRequest
@@ -27,9 +27,10 @@ impl Query {
                         None
                     }
                 }
-            }
+            },
             Err(e) => {
                 error!("Failed to send request: {}", e);
+                // Handle the error, e.g., return None or propagate the error
                 None
             }
         }

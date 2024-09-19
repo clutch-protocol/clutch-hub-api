@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::time::{timeout, Duration};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message;
 use tracing::{error, info};
@@ -55,19 +56,27 @@ impl WebSocketManager {
 
         let request_json = serde_json::to_string(&request).map_err(|e| e.to_string())?;
 
-        self.tx
-            .send(request_json)
-            .await
-            .map_err(|e| e.to_string())?;
+        // Send the request
+        if let Err(e) = self.tx.send(request_json).await {
+            // Sending failed, remove the pending request
+            let mut pending = self.pending_requests.lock().await;
+            pending.remove(&id);
+            return Err(format!("Failed to send request: {}", e));
+        }
 
-        // Wait for response
-        match resp_rx.await {
-            Ok(response_json) => {
+        // Wait for response with timeout
+        let response_result = timeout(Duration::from_secs(10), resp_rx).await;
+
+        match response_result {
+            Ok(Ok(response_json)) => {
+                if response_json.is_empty() {
+                    // Connection lost, and no response received
+                    return Err("Connection lost before receiving response".to_string());
+                }
+
                 // Parse the response
-                let response: JSONRPCResponse = serde_json::from_str(&response_json).map_err(|e| {
-                    error!("Failed to parse response: {}. Error: {}", response_json, e);
-                    e.to_string()
-                })?;
+                let response: JSONRPCResponse =
+                    serde_json::from_str(&response_json).map_err(|e| e.to_string())?;
                 if response.id != id {
                     return Err("Mismatched response ID".to_string());
                 }
@@ -78,8 +87,17 @@ impl WebSocketManager {
                 } else {
                     Err("No result or error in response".to_string())
                 }
-            },
-            Err(_) => Err("Failed to receive response".to_string()),
+            }
+            Ok(Err(_)) => {
+                // Sender was dropped
+                Err("Failed to receive response".to_string())
+            }
+            Err(_) => {
+                // Timeout occurred
+                let mut pending = self.pending_requests.lock().await;
+                pending.remove(&id);
+                Err("Request timed out".to_string())
+            }
         }
     }
 }
@@ -137,6 +155,11 @@ async fn start_connection_loop(
                         }
                     }
                 }
+
+                let mut pending = pending_requests.lock().await;
+                for (_, sender) in pending.drain() {
+                    let _ = sender.send("".to_string());
+                }
             }
             Err(e) => {
                 error!("Failed to connect to WebSocket server at {}: {}", url, e);
@@ -151,12 +174,13 @@ async fn start_connection_loop(
 
     fn extract_id_from_response(response: &str) -> Option<String> {
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(response) {
-            value.get("id").and_then(|id| id.as_str().map(|s| s.to_string()))
+            value
+                .get("id")
+                .and_then(|id| id.as_str().map(|s| s.to_string()))
         } else {
             None
         }
     }
-    
 }
 
 #[derive(Serialize, Deserialize)]
