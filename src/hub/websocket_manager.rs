@@ -3,6 +3,7 @@ use tokio_tungstenite::connect_async;
 use futures_util::{stream::SplitSink, SinkExt, StreamExt};
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio::net::TcpStream;
+use tracing::{error, info};
 use std::sync::{Arc, Mutex};
 
 type SharedWebSocket = Arc<Mutex<Option<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>>;
@@ -26,9 +27,9 @@ impl WebSocketManager {
             let (ws_sink, _) = ws_stream.split();
             let mut ws_sink_lock = self.ws_sink.lock().unwrap();
             *ws_sink_lock = Some(ws_sink);
-            println!("Connected to WebSocket server at {}", self.url);
+            info!("Connected to WebSocket server at {}", self.url);
         } else {
-            eprintln!("Failed to connect to WebSocket server at {}", self.url);
+            error!("Failed to connect to WebSocket server at {}", self.url);
         }
     }
 
@@ -36,10 +37,10 @@ impl WebSocketManager {
         let mut ws_sink_lock = self.ws_sink.lock().unwrap();
         if let Some(ws_sink) = &mut *ws_sink_lock {
             if let Err(e) = ws_sink.send(Message::Text(message.to_string())).await {
-                eprintln!("Failed to send message: {}", e);
+                error!("Failed to send message: {}", e);
             }
         } else {
-            eprintln!("WebSocket connection not established");
+            error!("WebSocket connection not established");
         }
     }
 }

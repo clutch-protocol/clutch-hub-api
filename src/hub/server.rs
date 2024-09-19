@@ -24,3 +24,4 @@ pub async fn run_graphql_server(ws_manager: Arc<WebSocketManager>) -> std::io::R
     .run()
     .await
 }
+
