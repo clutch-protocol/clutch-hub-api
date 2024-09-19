@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     setup_tracing(&config.log_level, &config.seq_url, &config.seq_api_key)?;
     serve_metrics(&config.serve_metric_addr);
-    let ws_manager = hub::server::connect_websocket(&config.clutch_node_wss_url).await;
+    let ws_manager = hub::server::connect_websocket(&config.clutch_node_ws_url).await;
     hub::server::run_graphql_server(ws_manager).await?;
 
     Ok(())

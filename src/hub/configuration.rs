@@ -9,7 +9,7 @@ pub struct AppConfig {
     pub serve_metric_addr: String,
     pub seq_url: String,
     pub seq_api_key: String,
-    pub clutch_node_wss_url: String,
+    pub clutch_node_ws_url: String,
 }
 
 impl AppConfig {
