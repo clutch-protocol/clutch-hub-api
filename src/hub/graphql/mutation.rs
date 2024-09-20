@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
 use async_graphql::{Context, Object};
-use crate::hub::graphql::types::RideRequest;
+use serde_json::json;
+use tracing::error;
+use crate::hub::{clutch_node_client::ClutchNodeClient, graphql::types::RideRequest};
 
 #[derive(Default)]
 pub struct Mutation;
@@ -8,16 +12,33 @@ pub struct Mutation;
 impl Mutation {
     pub async fn create_ride_request(
         &self,
-        _ctx: &Context<'_>,
-        pickup_location: String,
-        dropoff_location: String,
+        ctx: &Context<'_>,
+        _pickup_location: String,
+        _dropoff_location: String,
         user_id: String,
-    ) -> RideRequest {
-        // Here you'd add logic to store this request in a database or other storage.
-        RideRequest {
-            pickup_location,
-            dropoff_location,
-            user_id,
+    ) -> Option<RideRequest> {   
+        let ws_manager = ctx
+        .data::<Arc<ClutchNodeClient>>()
+        .expect("WebSocketManager not found in context");
+
+    let params = json!({ "user_id": user_id });
+
+    match ws_manager.send_request("add_transaction", params).await {
+        Ok(result) => {
+            // Parse the result into RideRequest
+            match serde_json::from_value::<RideRequest>(result) {
+                Ok(ride_request) => Some(ride_request),
+                Err(e) => {
+                    error!("Failed to parse RideRequest: {}", e);
+                    None
+                }
+            }
+        },
+        Err(e) => {
+            error!("Failed to send request: {}", e);
+            // Handle the error, e.g., return None or propagate the error
+            None
         }
+    }
     }
 }
