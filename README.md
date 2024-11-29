@@ -8,6 +8,70 @@ Clutch Hub API is a backend service designed to manage and provide data for the 
 - CRUD operations for various resources
 - Data validation and error handling
 - Integration with external services
+- Detailed API documentation
+- Data modeling for resources
+- Example requests and responses
+
+## API Documentation
+
+### Authentication
+
+#### POST /auth/register
+Registers a new user.
+
+**Request Body:**
+```json
+{
+  "username": "string",
+  "password": "string",
+  "email": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "string",
+  "username": "string",
+  "email": "string",
+  "token": "string"
+}
+```
+
+#### POST /auth/login
+Logs in a user.
+
+**Request Body:**
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "token": "string"
+}
+```
+
+### Users
+
+- `GET /users`: Retrieve a list of users.
+- `POST /users`: Create a new user.
+- `GET /users/{id}`: Retrieve a user by ID.
+- `PUT /users/{id}`: Update a user by ID.
+- `DELETE /users/{id}`: Delete a user by ID.
+
+## Data Models
+
+### User
+- **id**: string
+- **username**: string
+- **email**: string
+- **createdAt**: Date
+- **updatedAt**: Date
 
 ## Installation
 1. Clone the repository:
@@ -29,6 +93,20 @@ Clutch Hub API is a backend service designed to manage and provide data for the 
     npm run dev
     ```
 2. The API will be available at `http://localhost:3000`.
+
+Example API calls:
+  - **Register a new user:**
+    ```bash
+    curl -X POST http://localhost:3000/auth/register \
+    -H "Content-Type: application/json" \
+    -d '{"username": "john_doe", "password": "securepassword", "email": "john@example.com"}'
+    ```
+  - **Login:**
+    ```bash
+    curl -X POST http://localhost:3000/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"username": "john_doe", "password": "securepassword"}'
+    ```
 
 ## Configuration
 - Update the `.env` file with your environment variables.
