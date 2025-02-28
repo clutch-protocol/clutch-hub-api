@@ -14,7 +14,6 @@ pub struct SignatureKeys {
 }
 
 impl SignatureKeys {
-
     #[allow(dead_code)]
     pub fn generate_new_keypair() -> Self {
         let secp = Secp256k1::new();
@@ -98,6 +97,23 @@ impl SignatureKeys {
             Err(_) => Err("Public key could not be recovered".to_string()),
         }
     }
+
+    pub fn validate_public_key(public_key: &str) -> Result<(), String> {
+        // Remove "0x" prefix if present
+        let cleaned_key = public_key.trim_start_matches("0x");
+        
+        // Ethereum addresses are 40 characters (20 bytes)
+        // Uncompressed secp256k1 public keys are 130 characters (65 bytes)
+        if cleaned_key.len() != 40 && cleaned_key.len() != 130 {
+            return Err(format!("Invalid public key length. Expected 40 or 130 characters, got {} for key: {}", cleaned_key.len(), public_key));
+        }
+
+        // Validate hex format
+        Vec::from_hex(cleaned_key)
+            .map_err(|_| format!("Invalid hex format for public key: {}", public_key))?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -172,5 +188,33 @@ mod tests {
                 "Expected verification failure with a different public key"
             ),
         }
+    }
+
+    #[test]
+    fn test_validate_public_key() {
+        // Test with Ethereum address format (40 chars)
+        let eth_address = "deb4cfb63db134698e1879ea24904df074726cc0";
+        let result = SignatureKeys::validate_public_key(eth_address);
+        assert!(result.is_ok(), "Valid Ethereum address should be accepted");
+
+        // Test with 0x prefixed Ethereum address
+        let prefixed_eth_address = "0xdeb4cfb63db134698e1879ea24904df074726cc0";
+        let result = SignatureKeys::validate_public_key(prefixed_eth_address);
+        assert!(result.is_ok(), "0x prefixed Ethereum address should be accepted");
+
+        // Generate a valid secp256k1 key pair to test with real public key
+        let keys = SignatureKeys::generate_new_keypair();
+        let result = SignatureKeys::validate_public_key(&keys.public_key);
+        assert!(result.is_ok(), "Valid secp256k1 public key should be accepted");
+
+        // Test with invalid hex string
+        let invalid_hex = "not_a_valid_hex_string";
+        let result = SignatureKeys::validate_public_key(invalid_hex);
+        assert!(result.is_err(), "Invalid hex string should be rejected");
+
+        // Test with wrong length
+        let wrong_length = "abc123";
+        let result = SignatureKeys::validate_public_key(wrong_length);
+        assert!(result.is_err(), "Wrong length key should be rejected");
     }
 }

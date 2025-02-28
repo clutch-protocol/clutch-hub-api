@@ -6,4 +6,4 @@ log_level = "info"
 seq_url = "http://127.0.0.1:5341"
 seq_api_key = "WTWpaBblw8AV9Wy4cQnk"
 jwt_secret = "iP8BoK3dJfTQGz5UyXq9NwL7e0vCmAhR6S2YxE1ZpDt4"
-jwt_expiration_hours = 24 # Token expiration time in hours
+jwt_expiration_hours = 6

@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
+use crate::hub::{
+    auth,
+    clutch_node_client::ClutchNodeClient,
+    configuration::AppConfig,
+    graphql::types::{get_auth_user, AuthGuard, RideRequest, TokenResponse},
+};
 use async_graphql::{Context, Object};
 use serde_json::json;
 use tracing::{error, info};
-use crate::hub::{
-    clutch_node_client::ClutchNodeClient, 
-    graphql::types::{RideRequest, AuthGuard, get_auth_user, TokenResponse},
-    auth,
-    configuration::AppConfig
-};
 
 #[derive(Default)]
 pub struct Mutation;
@@ -35,12 +35,15 @@ impl Mutation {
         &self,
         ctx: &Context<'_>,
         pickup_location: String,
-        dropoff_location: String
+        dropoff_location: String,
     ) -> Option<RideRequest> {
         // Get authenticated user from context - we can safely unwrap because the guard ensures it exists
         let auth_user = get_auth_user(ctx).expect("User should be authenticated due to AuthGuard");
 
-        info!("Processing ride request for user with public key: {}", auth_user.public_key);
+        info!(
+            "Processing ride request for user with public key: {}",
+            auth_user.public_key
+        );
 
         let ws_manager = ctx
             .data::<Arc<ClutchNodeClient>>()
@@ -63,7 +66,7 @@ impl Mutation {
                         None
                     }
                 }
-            },
+            }
             Err(e) => {
                 error!("Failed to send request: {}", e);
                 // Handle the error, e.g., return None or propagate the error
