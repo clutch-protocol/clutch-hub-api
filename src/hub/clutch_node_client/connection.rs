@@ -70,7 +70,7 @@ pub async fn start_connection_loop(
 
         // Wait before attempting to reconnect
         let retry_seconds = 5;
-        info!("Reconnecting to clutch-node in {} seconds...", retry_seconds);
+        error!("Reconnecting to clutch-node in {} seconds...", retry_seconds);
         tokio::time::sleep(Duration::from_secs(retry_seconds)).await;
     }
 }
