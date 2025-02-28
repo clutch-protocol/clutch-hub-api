@@ -11,6 +11,8 @@ pub struct AppConfig {
     pub seq_api_key: String,
     pub clutch_node_ws_url: String,
     pub ws_addr: String,
+    pub jwt_secret: String,
+    pub jwt_expiration_hours: u64,
 }
 
 impl AppConfig {
