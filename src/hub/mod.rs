@@ -1,8 +1,9 @@
+pub mod auth;
+pub mod clutch_node_client;
 pub mod configuration;
 pub mod graphql;
+pub mod metric;
 pub mod seq;
 pub mod server;
-pub mod tracing;
-pub mod clutch_node_client;
-pub mod metric;
 pub mod signature_keys;
+pub mod tracing;

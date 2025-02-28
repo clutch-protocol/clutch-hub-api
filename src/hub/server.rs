@@ -1,4 +1,5 @@
 use crate::hub::clutch_node_client::ClutchNodeClient;
+use crate::hub::configuration::AppConfig;
 use crate::hub::graphql::build_schema;
 use crate::hub::graphql::handler::graphql_handler;
 use actix_web::{web, App, HttpServer};
@@ -12,10 +13,12 @@ pub async fn connect_websocket(wss_url: &str) -> Arc<ClutchNodeClient> {
 pub async fn run_graphql_server(
     ws_addr: &str,
     ws_manager: Arc<ClutchNodeClient>,
+    config: AppConfig,
 ) -> std::io::Result<()> {
-    let schema = build_schema(ws_manager.clone());
+    let schema = build_schema(ws_manager.clone(), config.clone());
     HttpServer::new(move || {
         App::new()
+            .app_data(web::Data::new(config.clone()))
             .app_data(web::Data::new(schema.clone()))
             .service(web::resource("/graphql").route(web::post().to(graphql_handler)))
     })

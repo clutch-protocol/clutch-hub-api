@@ -2,43 +2,73 @@ use std::sync::Arc;
 
 use async_graphql::{Context, Object};
 use serde_json::json;
-use tracing::error;
-use crate::hub::{clutch_node_client::ClutchNodeClient, graphql::types::RideRequest};
+use tracing::{error, info};
+use crate::hub::{
+    clutch_node_client::ClutchNodeClient, 
+    graphql::types::{RideRequest, AuthGuard, get_auth_user, TokenResponse},
+    auth,
+    configuration::AppConfig
+};
 
 #[derive(Default)]
 pub struct Mutation;
 
 #[Object]
 impl Mutation {
+    pub async fn generate_token(
+        &self,
+        ctx: &Context<'_>,
+        public_key: String,
+    ) -> async_graphql::Result<TokenResponse> {
+        let config = ctx
+            .data::<AppConfig>()
+            .map_err(|_| async_graphql::Error::new("Internal server error"))?;
+
+        let token = auth::generate_jwt_token(&public_key, config)
+            .map_err(|e| async_graphql::Error::new(format!("Failed to generate token: {}", e)))?;
+
+        Ok(TokenResponse { token })
+    }
+
+    #[graphql(guard = "AuthGuard")]
     pub async fn create_ride_request(
         &self,
         ctx: &Context<'_>,
-        _pickup_location: String,
-        _dropoff_location: String,
-        user_id: String,
-    ) -> Option<RideRequest> {   
+        pickup_location: String,
+        dropoff_location: String
+    ) -> Option<RideRequest> {
+        // Get authenticated user from context - we can safely unwrap because the guard ensures it exists
+        let auth_user = get_auth_user(ctx).expect("User should be authenticated due to AuthGuard");
+
+        info!("Processing ride request for user with public key: {}", auth_user.public_key);
+
         let ws_manager = ctx
-        .data::<Arc<ClutchNodeClient>>()
-        .expect("WebSocketManager not found in context");
+            .data::<Arc<ClutchNodeClient>>()
+            .expect("WebSocketManager not found in context");
 
-    let params = json!({ "user_id": user_id });
+        // Use the authenticated user's data in the request
+        let params = json!({
+            "public_key": auth_user.public_key,
+            "pickup_location": pickup_location,
+            "dropoff_location": dropoff_location
+        });
 
-    match ws_manager.send_request("send_transaction", params).await {
-        Ok(result) => {
-            // Parse the result into RideRequest
-            match serde_json::from_value::<RideRequest>(result) {
-                Ok(ride_request) => Some(ride_request),
-                Err(e) => {
-                    error!("Failed to parse RideRequest: {}", e);
-                    None
+        match ws_manager.send_request("send_transaction", params).await {
+            Ok(result) => {
+                // Parse the result into RideRequest
+                match serde_json::from_value::<RideRequest>(result) {
+                    Ok(ride_request) => Some(ride_request),
+                    Err(e) => {
+                        error!("Failed to parse RideRequest: {}", e);
+                        None
+                    }
                 }
+            },
+            Err(e) => {
+                error!("Failed to send request: {}", e);
+                // Handle the error, e.g., return None or propagate the error
+                None
             }
-        },
-        Err(e) => {
-            error!("Failed to send request: {}", e);
-            // Handle the error, e.g., return None or propagate the error
-            None
         }
-    }
     }
 }
