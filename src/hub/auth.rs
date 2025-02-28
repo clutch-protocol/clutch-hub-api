@@ -14,7 +14,7 @@ pub fn generate_jwt_token(public_key: &str, config: &AppConfig) -> Result<String
     let expiration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs() as usize + (24 * 3600); // Token expires in 24 hours
+        .as_secs() as usize + (config.jwt_expiration_hours * 3600) as usize; // Convert hours to seconds
 
     let claims = Claims {
         pk: public_key.to_string(),
