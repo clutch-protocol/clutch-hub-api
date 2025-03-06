@@ -10,6 +10,7 @@ pub struct RideRequest {
 #[derive(SimpleObject)]
 pub struct TokenResponse {
     pub token: String,
+    pub expires_at: usize,
 }
 
 #[derive(Clone, Debug)]

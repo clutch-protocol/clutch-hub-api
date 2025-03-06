@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::hub::{
     auth,
@@ -24,10 +25,14 @@ impl Mutation {
             .data::<AppConfig>()
             .map_err(|_| async_graphql::Error::new("Internal server error"))?;
 
-        let token = auth::generate_jwt_token(&public_key, config)
-            .map_err(|e| async_graphql::Error::new(format!("Failed to generate token: {}", e)))?;
+        let (token, expires_at) = auth::generate_jwt_token(
+            &public_key,
+            config.jwt_expiration_hours,
+            config.jwt_secret.as_str(),
+        )
+        .map_err(|e| async_graphql::Error::new(format!("Failed to generate token: {}", e)))?;
 
-        Ok(TokenResponse { token })
+        Ok(TokenResponse { token, expires_at })
     }
 
     #[graphql(guard = "AuthGuard")]
