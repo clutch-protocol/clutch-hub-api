@@ -38,8 +38,11 @@ impl Mutation {
     pub async fn create_ride_request(
         &self,
         ctx: &Context<'_>,
-        pickup_location: String,
-        dropoff_location: String,
+        pickup_latitude: f64,
+        pickup_longitude: f64,
+        dropoff_latitude: f64,
+        dropoff_longitude: f64,
+        fare: i32,
     ) -> Option<RideRequest> {
         // Get authenticated user from context - we can safely unwrap because the guard ensures it exists
         let auth_user = get_auth_user(ctx).expect("User should be authenticated due to AuthGuard");
@@ -53,11 +56,23 @@ impl Mutation {
             .data::<Arc<ClutchNodeClient>>()
             .expect("WebSocketManager not found in context");
 
-        // Use the authenticated user's data in the request
+        // Use the authenticated user's data in the request with the specified format
         let params = json!({
-            "public_key": auth_user.public_key,
-            "pickup_location": pickup_location,
-            "dropoff_location": dropoff_location
+            "from": auth_user.public_key,
+            "data": {
+                "function_call_type": "RideRequest",
+                "arguments": {
+                    "fare": fare,
+                    "pickup_location": {
+                        "latitude": pickup_latitude,
+                        "longitude": pickup_longitude
+                    },
+                    "dropoff_location": {
+                        "latitude": dropoff_latitude,
+                        "longitude": dropoff_longitude
+                    }
+                }
+            }
         });
 
         match ws_manager.send_request("send_transaction", params).await {
