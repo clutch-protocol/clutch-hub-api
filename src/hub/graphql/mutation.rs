@@ -59,6 +59,7 @@ impl Mutation {
         // Use the authenticated user's data in the request with the specified format
         let params = json!({
             "from": auth_user.public_key,
+            "nonce": 1,
             "data": {
                 "function_call_type": "RideRequest",
                 "arguments": {
