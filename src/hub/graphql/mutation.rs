@@ -13,6 +13,32 @@ use tracing::{error, info};
 #[derive(Default)]
 pub struct Mutation;
 
+// Function to get the next nonce value
+async fn get_next_nonce(client: &ClutchNodeClient, address: &str) -> u64 {
+    // Request the next nonce from the node
+    match client.send_request("get_next_nonce", json!({ "address": address })).await {
+        Ok(result) => {
+            // Try to parse the nonce value from the result
+            match result.get("nonce").and_then(|n| n.as_u64()) {
+                Some(nonce) => {
+                    info!("Retrieved nonce {} for address {}", nonce, address);
+                    nonce
+                },
+                None => {
+                    error!("Failed to parse nonce value from response: {:?}", result);
+                    // Fallback to default nonce if parsing fails
+                    1
+                }
+            }
+        },
+        Err(e) => {
+            error!("Failed to get nonce for address {}: {}", address, e);
+            // Fallback to default nonce if request fails
+            1
+        }
+    }
+}
+
 #[Object]
 impl Mutation {
     pub async fn generate_token(
@@ -56,10 +82,13 @@ impl Mutation {
             .data::<Arc<ClutchNodeClient>>()
             .expect("WebSocketManager not found in context");
 
+        // Get the next nonce for this user
+        let nonce = get_next_nonce(&ws_manager, &auth_user.public_key).await;
+
         // Use the authenticated user's data in the request with the specified format
         let params = json!({
             "from": auth_user.public_key,
-            "nonce": 1,
+            "nonce": nonce,
             "data": {
                 "function_call_type": "RideRequest",
                 "arguments": {
