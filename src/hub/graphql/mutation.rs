@@ -9,6 +9,18 @@ use crate::hub::{
 use async_graphql::{Context, Object};
 use serde_json::json;
 use tracing::{error, info};
+use thiserror::Error;
+
+// Custom error type for mutations
+#[derive(Debug, Error)]
+pub enum MutationError {
+    #[error("Authentication failed: {0}")]
+    AuthError(String),
+    #[error("Internal server error: {0}")]
+    InternalError(String),
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+}
 
 #[derive(Default)]
 pub struct Mutation;
@@ -22,7 +34,7 @@ impl Mutation {
     ) -> async_graphql::Result<TokenResponse> {
         let config = ctx
             .data::<AppConfig>()
-            .map_err(|_| async_graphql::Error::new("Internal server error"))?;
+            .map_err(|_| async_graphql::Error::new("Failed to get app config"))?;
 
         let (token, expires_at) = auth::generate_jwt_token(
             &public_key,
@@ -43,9 +55,10 @@ impl Mutation {
         dropoff_latitude: f64,
         dropoff_longitude: f64,
         fare: i32,
-    ) -> Option<RideRequest> {
-        // Get authenticated user from context - we can safely unwrap because the guard ensures it exists
-        let auth_user = get_auth_user(ctx).expect("User should be authenticated due to AuthGuard");
+    ) -> async_graphql::Result<RideRequest> {
+        // Get authenticated user from context
+        let auth_user = get_auth_user(ctx)
+            .ok_or_else(|| async_graphql::Error::new("User not authenticated"))?;
 
         info!(
             "Processing ride request for user with public key: {}",
@@ -54,12 +67,13 @@ impl Mutation {
 
         let client = ctx
             .data::<Arc<ClutchNodeClient>>()
-            .expect("WebSocketManager not found in context");
+            .map_err(|_| async_graphql::Error::new("WebSocket manager not found"))?
+            .clone();
 
         // Get the next nonce for this user using the client method
         let nonce = client.get_next_nonce(&auth_user.public_key).await;
 
-        // Use the authenticated user's data in the request with the specified format
+        // Create request parameters
         let params = json!({
             "from": auth_user.public_key,
             "nonce": nonce,
@@ -79,22 +93,14 @@ impl Mutation {
             }
         });
 
-        match client.send_request("send_transaction", params).await {
-            Ok(result) => {
-                // Parse the result into RideRequest
-                match serde_json::from_value::<RideRequest>(result) {
-                    Ok(ride_request) => Some(ride_request),
-                    Err(e) => {
-                        error!("Failed to parse RideRequest: {}", e);
-                        None
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Failed to send request: {}", e);
-                // Handle the error, e.g., return None or propagate the error
-                None
-            }
-        }
+        // Send request and handle response
+        let result = client
+            .send_request("send_transaction", params)
+            .await
+            .map_err(|e| async_graphql::Error::new(format!("Failed to send request: {}", e)))?;
+
+        // Parse the result into RideRequest
+        serde_json::from_value::<RideRequest>(result)
+            .map_err(|e| async_graphql::Error::new(format!("Failed to parse RideRequest: {}", e)))
     }
 }
