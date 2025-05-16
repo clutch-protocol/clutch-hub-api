@@ -4,9 +4,9 @@ use crate::hub::{
     auth,
     clutch_node_client::ClutchNodeClient,
     configuration::AppConfig,
-    graphql::types::{get_auth_user, AuthGuard, RideRequest, TokenResponse},
+    graphql::types::{get_auth_user, AuthGuard, TokenResponse},
 };
-use async_graphql::{Context, Object};
+use async_graphql::{Context, Object, Json};
 use serde_json::json;
 use tracing::{error, info};
 use thiserror::Error;
@@ -47,7 +47,7 @@ impl Mutation {
     }
 
     #[graphql(guard = "AuthGuard")]
-    pub async fn create_unsigned_ride_request(  
+    pub async fn create_unsigned_ride_request(
         &self,
         ctx: &Context<'_>,
         pickup_latitude: f64,
@@ -55,7 +55,7 @@ impl Mutation {
         dropoff_latitude: f64,
         dropoff_longitude: f64,
         fare: i32,
-    ) -> async_graphql::Result<RideRequest> {
+    ) -> async_graphql::Result<Json<serde_json::Value>> {
         // Get authenticated user from context
         let auth_user = get_auth_user(ctx)
             .ok_or_else(|| async_graphql::Error::new("User not authenticated"))?;
@@ -93,14 +93,6 @@ impl Mutation {
             }
         });
 
-        // Send request and handle response
-        let result = client
-            .send_request("send_transaction", params)
-            .await
-            .map_err(|e| async_graphql::Error::new(format!("Failed to send request: {}", e)))?;
-
-        // Parse the result into RideRequest
-        serde_json::from_value::<RideRequest>(result)
-            .map_err(|e| async_graphql::Error::new(format!("Failed to parse RideRequest: {}", e)))
+        Ok(Json(params))
     }
 }
