@@ -47,7 +47,7 @@ impl Mutation {
     }
 
     #[graphql(guard = "AuthGuard")]
-    pub async fn create_ride_request(
+    pub async fn create_unsigned_ride_request(  
         &self,
         ctx: &Context<'_>,
         pickup_latitude: f64,
