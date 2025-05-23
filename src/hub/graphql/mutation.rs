@@ -11,7 +11,6 @@ use serde_json::json;
 use tracing::{error, info};
 use thiserror::Error;
 
-// Custom error type for mutations
 #[derive(Debug, Error)]
 pub enum MutationError {
     #[error("Authentication failed: {0}")]
