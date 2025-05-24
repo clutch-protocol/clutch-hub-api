@@ -6,10 +6,10 @@ use crate::hub::{
     configuration::AppConfig,
     graphql::types::{get_auth_user, AuthGuard, TokenResponse},
 };
-use async_graphql::{Context, Object, Json};
+use async_graphql::{Context, Json, Object};
 use serde_json::json;
-use tracing::{error, info};
 use thiserror::Error;
+use tracing::{error, info};
 
 #[derive(Debug, Error)]
 pub enum MutationError {
@@ -93,5 +93,42 @@ impl Mutation {
         });
 
         Ok(Json(params))
+    }
+
+    #[graphql(guard = "AuthGuard")]
+    pub async fn send_raw_transaction(
+        &self,
+        ctx: &Context<'_>,
+        raw_transaction: String,
+    ) -> async_graphql::Result<Json<serde_json::Value>> {
+        let auth_user = get_auth_user(ctx)
+            .ok_or_else(|| async_graphql::Error::new("User not authenticated"))?;
+
+        info!(
+            "Submitting transaction for user with public key: {}",
+            auth_user.public_key
+        );
+
+        let client = ctx
+            .data::<Arc<ClutchNodeClient>>()
+            .map_err(|_| async_graphql::Error::new("WebSocket manager not found"))?
+            .clone();
+
+        // Ensure the raw transaction is properly formatted (has 0x prefix)
+        let formatted_tx = if !raw_transaction.starts_with("0x") {
+            format!("0x{}", raw_transaction)
+        } else {
+            raw_transaction
+        };
+
+        // Send the transaction to the node
+        // The client.send_request method will handle formatting the request properly
+        let result = client
+            .send_request("send_raw_transaction", serde_json::Value::String(formatted_tx))
+            .await
+            .map_err(|e| async_graphql::Error::new(format!("Failed to send transaction: {}", e)))?;
+
+        // Return the result as JSON
+        Ok(Json(result))
     }
 }
