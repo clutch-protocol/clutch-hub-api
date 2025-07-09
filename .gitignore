@@ -4,8 +4,8 @@
 # If you have generated documentation, you can ignore that too.
 /docs/
 
-/Cargo.lock
-# Ignore Cargo.lock for libraries, but you should commit it for binaries.
+# Note: Cargo.lock is NOT ignored for applications (like this one)
+# It should be committed to ensure reproducible builds
 
 /*.log
 node_modules/
