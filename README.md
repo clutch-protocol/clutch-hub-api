@@ -1,5 +1,12 @@
 # Clutch Hub API
 
+![Alpha](https://img.shields.io/badge/status-alpha-orange.svg)
+![Experimental](https://img.shields.io/badge/stage-experimental-red.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)
+
+> ⚠️ **ALPHA SOFTWARE** - This project is in active development and is considered experimental. Use at your own risk. APIs may change without notice.
+
 ## Overview
 Clutch Hub API is a backend service designed to manage and provide data for the Clutch Hub application. It handles various operations such as user authentication, data retrieval, and data manipulation.
 
@@ -74,6 +81,12 @@ Logs in a user.
 - **updatedAt**: Date
 
 ## Installation
+
+### Prerequisites
+- Rust (1.70+)
+- Cargo
+
+### Setup
 1. Clone the repository:
     ```bash
     git clone https://github.com/MehranMazhar/clutch-hub-api.git
@@ -82,17 +95,17 @@ Logs in a user.
     ```bash
     cd clutch-hub-api
     ```
-3. Install dependencies:
+3. Build the project:
     ```bash
-    npm install
+    cargo build --release
     ```
 
 ## Usage
-1. Start the development server:
+1. Start the API server:
     ```bash
-    npm run dev
+    cargo run
     ```
-2. The API will be available at `http://localhost:3000`.
+2. The API will be available at `http://localhost:3000` (or configured port).
 
 Example API calls:
   - **Register a new user:**
