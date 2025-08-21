@@ -10,6 +10,8 @@
 ## Overview
 Clutch Hub API is a backend service designed to manage and provide data for the Clutch Hub application. It handles various operations such as user authentication, data retrieval, and data manipulation.
 
+**Created and maintained by [Mehran Mazhar](https://github.com/MehranMazhar)**
+
 ## Features
 - User authentication and authorization
 - CRUD operations for various resources
@@ -131,6 +133,13 @@ Example API calls:
 4. Commit your changes (`git commit -m 'Add some feature'`).
 5. Push to the branch (`git push origin feature-branch`).
 6. Open a pull request.
+
+## Author & Maintainer
+
+**Mehran Mazhar**
+- GitHub: [@MehranMazhar](https://github.com/MehranMazhar)
+- Website: [MehranMazhar.com](https://MehranMazhar.com)
+- Email: mehran.mazhar@gmail.com
 
 ## License
 This project is licensed under the MIT License.
