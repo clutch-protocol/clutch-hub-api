@@ -85,7 +85,63 @@ Logs in a user.
 ## Installation
 
 ### Prerequisites
-- Rust (1.70+)
+- Docker and Docker Compose (recommended)
+- OR Rust (1.70+) and Cargo for local development
+
+## 🐳 Docker Setup (Recommended)
+
+### Quick Start with Docker
+```bash
+# Clone the repository
+git clone https://github.com/MehranMazhar/clutch-hub-api.git
+cd clutch-hub-api
+
+# Copy environment configuration
+cp env.example .env
+
+# Build and start with Docker Compose
+docker-compose up --build
+```
+
+The API will be available at `http://localhost:3000`
+
+### Docker Commands
+```bash
+# Build the image
+docker build -t clutch-hub-api .
+
+# Run the container
+docker run -p 3000:3000 --env-file .env clutch-hub-api
+
+# Using Docker Compose
+docker-compose up -d          # Start in background
+docker-compose logs -f        # View logs
+docker-compose down           # Stop services
+```
+
+### Development with Docker
+```powershell
+# Use the development script (Windows)
+.\scripts\docker-dev.ps1 build    # Build image
+.\scripts\docker-dev.ps1 up       # Start services
+.\scripts\docker-dev.ps1 logs     # View logs
+.\scripts\docker-dev.ps1 health   # Check health
+.\scripts\docker-dev.ps1 clean    # Clean up
+```
+
+### Pre-built Docker Images
+```bash
+# Pull from Docker Hub (when available)
+docker pull <DOCKERHUB_USERNAME>/clutch-hub-api:latest
+
+# Run pre-built image
+docker run -p 3000:3000 --env-file .env <DOCKERHUB_USERNAME>/clutch-hub-api:latest
+```
+
+## 🦀 Local Rust Setup
+
+### Prerequisites
+- Rust (1.76+)
 - Cargo
 
 ### Setup
@@ -97,7 +153,11 @@ Logs in a user.
     ```bash
     cd clutch-hub-api
     ```
-3. Build the project:
+3. Copy environment configuration:
+    ```bash
+    cp env.example .env
+    ```
+4. Build the project:
     ```bash
     cargo build --release
     ```

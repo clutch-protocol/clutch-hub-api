@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  clutch-hub-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clutch-hub-api-container
+    ports:
+      - "3000:3000"
+    environment:
+      - RUST_LOG=info
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - clutch-network
+    volumes:
+      # Mount config directory for easy configuration updates
+      - ./config:/app/config:ro
+
+  # Optional: Add a reverse proxy for production-like setup
+  nginx:
+    image: nginx:alpine
+    container_name: clutch-nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - clutch-hub-api
+    networks:
+      - clutch-network
+    profiles:
+      - proxy
+    restart: unless-stopped
+
+networks:
+  clutch-network:
+    driver: bridge
+
+# Optional: Add volumes for persistent data if needed
+volumes:
+  clutch-data:
+    driver: local
