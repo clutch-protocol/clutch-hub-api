@@ -1,6 +1,6 @@
 # Rust build artifacts
 /target
-Cargo.lock
+# Note: We need Cargo.lock for reproducible builds in Docker
 
 # Git
 .git

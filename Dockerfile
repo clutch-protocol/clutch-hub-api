@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Clutch Hub API
 # Build arguments for flexibility
-ARG RUST_VERSION=1.76
+ARG RUST_VERSION=1.86
 
 #==============================================================================
 # Builder Stage - Build the Rust application
