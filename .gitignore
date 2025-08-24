@@ -20,3 +20,6 @@ node_modules/
 
 # Ignore environment variable files (if any)
 .env
+
+# Temporary Cargo registry used for clean builds
+/.cargo-temp/

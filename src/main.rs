@@ -8,14 +8,20 @@ use hub::tracing::setup_tracing;
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    #[clap(short, long, default_value = "default")]
-    env: String,
+    #[clap(short, long)]
+    env: Option<String>,
+    #[clap(index = 1)]
+    env_positional: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let env = &Args::parse().env;
-    let config = AppConfig::load_configuration(env)?;
+    let args = Args::parse();
+    let env_owned = args
+        .env
+        .or(args.env_positional)
+        .unwrap_or_else(|| "default".to_string());
+    let config = AppConfig::load_configuration(&env_owned)?;
 
     setup_tracing(&config.log_level, &config.seq_url, &config.seq_api_key)?;
     serve_metrics(&config.serve_metric_addr);
