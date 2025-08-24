@@ -96,12 +96,15 @@ where
 
         // Spawn an asynchronous task to send the log to Seq
         tokio::spawn(async move {
-            logger
+            if let Err(err) = logger
                 .lock()
                 .await
                 .log_to_seq(&message, level, &fields_json)
                 .await
-                .unwrap();
+            {
+                // Avoid tracing here to prevent recursive logging loops if Seq is down
+                eprintln!("[SeqLayer] failed to send log to Seq: {}", err);
+            }
         });
     }
 }
